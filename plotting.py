@@ -100,7 +100,7 @@ def plot_eigenvalues(eigs, include_kde=False, cmap=None):
     real_part = eigs.real.ravel()
     imag_part = eigs.imag.ravel()
     if include_kde:
-        sns.kdeplot(x=real_part, y=imag_part, ax=ax, shade=True)
+        sns.kdeplot(x=real_part, y=imag_part, ax=ax, fill=True)
 
     scatter = ax.scatter(real_part, 
                          imag_part, 
