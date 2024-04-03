@@ -4,6 +4,8 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 
+import statsmodels.api as sm
+
 class IdentityTransformer(BaseEstimator, TransformerMixin):
     def __init__(self):
         pass
@@ -212,6 +214,116 @@ class PandasMinMaxScaler(BaseEstimator, TransformerMixin):
         
         new_X = X.copy()
         new_X[self.columns] = (maxes - mins) * X[self.columns] + maxes
+
+        return new_X
+
+    def _validate_columns(self, X):
+        if self.columns is None:
+            self.columns = X.columns
+        else:
+            assert all([col in X.columns for col in self.columns])
+
+
+class HPFilterTransform(BaseEstimator, TransformerMixin):
+    def __init__(self, lamb=1600, return_series='trend', columns=None):
+        self.lamb = lamb
+        self.return_series = return_series
+        self.columns = columns
+        self.trends = {}
+        self.cycles = {}
+        
+    def fit(self, X, y=None):
+        self._validate_columns(X)
+        for column in self.columns:
+            cycle, trend = sm.tsa.hp_filter.hpfilter(X[column].dropna(), lamb=self.lamb)
+            self.trends[column] = trend
+            self.cycles[column] = cycle
+        
+        return self
+    
+    def transform(self, X, y=None):
+        result_dict = self.trends if self.return_series == 'trend' else self.cycles
+        
+        new_X = X.copy()
+        for column in self.columns:
+            out_data = result_dict[column]
+            new_X.loc[out_data.index, column] = out_data.values
+        
+        return new_X
+    
+    def inverse_transform(self, X, y=None):
+        component_dict = self.trends if self.return_series == 'cycle' else self.cycles
+        
+        new_X = X.copy()
+        for column in self.columns:
+            out_data = component_dict[column]
+            new_X.loc[out_data.index, column] += out_data.values
+
+        return new_X
+
+    def _validate_columns(self, X):
+        if self.columns is None:
+            self.columns = X.columns
+        else:
+            assert all([col in X.columns for col in self.columns])
+
+            
+class STLTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, period=5, seasonal=5, trend=7, return_series='trend', columns=None):
+        self.period = period
+        self.seasonal = seasonal
+        self.trend = trend
+        
+        self.return_series = return_series
+        self.columns = columns
+        self.trends = {}
+        self.seasonals = {}
+        self.resids = {}
+        
+    def fit(self, X, y=None):
+        self._validate_columns(X)
+        for column in self.columns:
+            mod = sm.tsa.STL(X[column].dropna(), period=self.period, seasonal=self.seasonal, trend=self.trend)
+            res = mod.fit()
+            self.trends[column] = res.trend
+            self.seasonals[column] = res.seasonal
+            self.resids[column] = res.resid
+        
+        return self
+    
+    def transform(self, X, y=None):
+        if self.return_series == 'trend':
+            result_dict = self.trends
+        elif self.return_series == 'seasonal':
+            result_dict = self.seasonals
+        elif self.return_series == 'resid':
+            result_dict = self.resids
+        else:
+            raise ValueError
+        
+        new_X = X.copy()
+        for column in self.columns:
+            out_data = result_dict[column]
+            new_X.loc[out_data.index, column] = out_data.values
+        
+        return new_X
+    
+    def inverse_transform(self, X, y=None):
+        if self.return_series == 'trend':
+            component_dicts = [self.seasonals, self.resids]
+        elif self.return_series == 'seasonal':
+            component_dicts = [self.trends, self.resids]
+        elif self.return_series == 'resid':
+            component_dicts = [self.trends, self.seasonals]
+        else:
+            raise ValueError
+
+        
+        new_X = X.copy()
+        for column in self.columns:
+            out_data = component_dict[column]
+            for d in component_dicts:
+                new_X.loc[out_data.index, column] += d[column]
 
         return new_X
 

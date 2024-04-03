@@ -1,12 +1,12 @@
-import aesara.tensor as at
-from aesara.tensor.nlinalg import matrix_dot
+import pytensor.tensor as pt
+from pytensor.tensor.nlinalg import matrix_dot
 
 
 def mdivide_right(B, A):
     '''
     Following the signature of the Stan function. Pay attention that B is first.
     '''
-    return at.linalg.solve(A, B.T, assume_a='pos').T
+    return pt.linalg.solve(A, B.T, assume_a='pos').T
 
 def quad_form_sym(A, B):
     '''

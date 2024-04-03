@@ -46,7 +46,7 @@ def simulate(x0, T, Z, R, H, Q, c, d, shock_trajectory=None, sim_length=40):
         if np.all(Q == 0):
             shock_trajectory = np.zeros((sim_length, k_posdef, 1))
         else:
-            shock_trajectory = numba_MV_normal(Q, sim_length)
+            shock_trajectory = np.ascontiguousarray(numba_MV_normal(Q, sim_length))
     if shock_trajectory.shape[0] < sim_length:
         temp = np.zeros((sim_length, k_posdef, 1))
         temp[:shock_trajectory.shape[0], :, :] = shock_trajectory
@@ -57,7 +57,7 @@ def simulate(x0, T, Z, R, H, Q, c, d, shock_trajectory=None, sim_length=40):
     else:
         observation_noise = numba_MV_normal(H, sim_length)
     
-    shock_trajectory = np.ascontiguousarray(shock_trajectory)
+#     shock_trajectory = np.ascontiguousarray(shock_trajectory)
     
     simulated_data = np.zeros((sim_length, k_obs))
     simulated_states = np.zeros((sim_length, k_hidden))

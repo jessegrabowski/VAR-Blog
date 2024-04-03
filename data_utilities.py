@@ -59,7 +59,7 @@ def download_raw_data(variables, source='fred', out_path='data/', fname='VAR_dat
     vars_to_update = []
     
     if os.path.isfile(f_path):
-        df = pd.read_csv(f_path, index_col=0, parse_dates=[0], infer_datetime_format=True)
+        df = pd.read_csv(f_path, index_col=0, parse_dates=[0])
         cols = df.columns
         new_variables = [x for x in variables if x not in cols]
         vars_to_update = [x for x in variables if x in cols]
@@ -78,6 +78,7 @@ def download_raw_data(variables, source='fred', out_path='data/', fname='VAR_dat
         new_df = yf_ticker.download(period='max', progress=False)['Close']
     
     if source.lower() == 'bis':
+        
         new_df = BISScraper(symbols=to_download)
     
     # Update columns that are already present
